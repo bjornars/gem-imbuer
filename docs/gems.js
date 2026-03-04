@@ -632,7 +632,6 @@ window.GEMS_DATA = {
     {"id":"SupportIntensify","name":"Intensify","color":"blue"},
     {"id":"SupportIronGrip","name":"Iron Grip","color":"red"},
     {"id":"SupportIronWill","name":"Iron Will","color":"red"},
-    {"id":"SupportItemQuantity","name":"Item Quantity","color":"red"},
     {"id":"SupportItemRarity","name":"Item Rarity","color":"blue"},
     {"id":"SupportKineticInstability","name":"Kinetic Instability","color":"blue"},
     {"id":"SupportKnockback","name":"Knockback","color":"red"},
