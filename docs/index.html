@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PoE Gem Krangler</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d0d;
+    color: #c8b99a;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  header {
+    background: #1a1208;
+    border-bottom: 2px solid #7a5c28;
+    padding: 16px 24px;
+  }
+  header h1 {
+    color: #d4a843;
+    font-size: 22px;
+    letter-spacing: 1px;
+  }
+  header p {
+    color: #8a7a60;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .container { padding: 20px 24px; max-width: 1100px; }
+
+  /* Search */
+  .search-wrap { position: relative; margin-bottom: 20px; max-width: 480px; }
+  #gem-input {
+    width: 100%;
+    background: #1c1c1c;
+    border: 1px solid #5a4020;
+    color: #d4c8a8;
+    padding: 10px 14px;
+    font-size: 15px;
+    outline: none;
+    border-radius: 3px;
+  }
+  #gem-input:focus { border-color: #d4a843; }
+  #gem-input::placeholder { color: #5a5040; }
+
+  #suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: #1c1c1c;
+    border: 1px solid #5a4020;
+    border-top: none;
+    z-index: 100;
+    max-height: 280px;
+    overflow-y: auto;
+    display: none;
+  }
+  .suggestion {
+    padding: 8px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .suggestion:hover, .suggestion.active { background: #2a2010; }
+  .suggestion .gem-name { flex: 1; }
+  .suggestion .gem-color-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* Gem color dots */
+  .dot-red   { background: #c44; }
+  .dot-green { background: #4a4; }
+  .dot-blue  { background: #44c; }
+
+  /* Color badge chips */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-red   { background: #3a0a0a; color: #e06060; border: 1px solid #6a2020; }
+  .badge-green { background: #0a2a0a; color: #60c060; border: 1px solid #206020; }
+  .badge-blue  { background: #0a0a3a; color: #6080e0; border: 1px solid #202070; }
+
+  /* Results */
+  #results { display: none; }
+
+  .result-header {
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #3a2a10;
+  }
+  .result-header h2 { color: #d4a843; font-size: 18px; }
+  .result-header .gem-tags { color: #7a6a50; font-size: 12px; margin-top: 4px; }
+
+  .color-sections { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  .color-section {
+    flex: 1;
+    min-width: 280px;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .section-header.red   { background: #1a0808; }
+  .section-header.green { background: #081a08; }
+  .section-header.blue  { background: #08081a; }
+
+  .section-title { font-weight: bold; font-size: 15px; flex: 1; }
+  .section-title.red   { color: #e06060; }
+  .section-title.green { color: #60c060; }
+  .section-title.blue  { color: #6080e0; }
+
+  .pool-info { font-size: 12px; color: #7a6a50; }
+
+  .prob-display {
+    padding: 8px 14px;
+    font-size: 12px;
+    border-bottom: 1px solid #2a2a2a;
+    min-height: 30px;
+    color: #d4a843;
+  }
+  .prob-display.empty { color: #5a4a30; }
+
+  .gem-list { padding: 4px 0; }
+  .gem-row {
+    display: flex;
+    align-items: center;
+    padding: 5px 14px;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .gem-row:hover { background: #1e1e1e; }
+  .gem-row input[type=checkbox] {
+    accent-color: #d4a843;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .gem-row .gname { flex: 1; font-size: 13px; }
+  .gem-row .gprob { font-size: 11px; color: #7a6a50; white-space: nowrap; }
+
+  .no-support { padding: 14px; color: #5a4a30; font-style: italic; }
+
+  #no-result {
+    color: #7a5a30;
+    padding: 8px 0;
+    display: none;
+  }
+</style>
+<script data-goatcounter="https://bjornars.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>PoE Gem Krangler</h1>
+  <p>
+    Using a <strong style="color:#d4a843;">Djinn Coin</strong> on a skill gem creates an <strong style="color:#d4a843;">Imbued Gem</strong> &mdash;
+    permanently corrupted, but with a random compatible Level 1 support embedded as if linked.
+    <strong style="color:#e06060;">Coin of Power</strong> draws from red supports,
+    <strong style="color:#60c060;">Coin of Skill</strong> from green, and
+    <strong style="color:#6080e0;">Coin of Knowledge</strong> from blue.
+    Pick a skill gem below to see the full pool for each color and your odds of hitting a specific support.
+  </p>
+  <p style="margin-top:6px;font-size:11px;color:#5a4a30;">Skill data sourced from <a href="https://github.com/PathOfBuildingCommunity/PathOfBuilding" style="color:#7a6040;" target="_blank">Path of Building Community</a>. All game data &copy; Grinding Gear Games. This tool claims no ownership of any data and is provided as-is for informational purposes only. Compatibility data is derived from Path of Building and may be inaccurate or out of date &mdash; always verify in-game before making decisions.</p>
+</header>
+
+<div class="container">
+  <div class="search-wrap">
+    <input id="gem-input" type="text" placeholder="Search skill gems…" autocomplete="off" />
+    <div id="suggestions"></div>
+  </div>
+  <div id="no-result">No matching skill gem found.</div>
+  <div id="results">
+    <div class="result-header">
+      <h2 id="result-name"></h2>
+      <div class="gem-tags" id="result-tags"></div>
+    </div>
+    <div class="color-sections" id="color-sections"></div>
+  </div>
+</div>
+
+<script src="gems.js"></script>
+<script>
+let data = null;
+let selectedGem = null;
+
+function initData(d) {
+  data = d;
+}
+
+// gems.js sets window.GEMS_DATA (works with file://)
+// Fall back to fetch for any environment where the script tag didn't load it
+if (window.GEMS_DATA) {
+  initData(window.GEMS_DATA);
+} else {
+  fetch('gems.json')
+    .then(r => r.json())
+    .then(d => initData(d))
+    .catch(() => alert('Failed to load gem data. Try serving via HTTP (python3 -m http.server) or ensure gems.js is present.'));
+}
+
+const input       = document.getElementById('gem-input');
+const suggestBox  = document.getElementById('suggestions');
+const resultsEl   = document.getElementById('results');
+const noResult    = document.getElementById('no-result');
+let activeIdx     = -1;
+
+function showSuggestions(query) {
+  if (!data || !query) { suggestBox.style.display = 'none'; return; }
+  const q = query.toLowerCase();
+  const matches = data.skillGems.filter(g => g.name.toLowerCase().includes(q)).slice(0, 20);
+  if (!matches.length) { suggestBox.style.display = 'none'; return; }
+  suggestBox.innerHTML = matches.map((g, i) =>
+    `<div class="suggestion" data-id="${g.id}" data-idx="${i}">
+      <span class="gem-color-dot dot-${g.color}"></span>
+      <span class="gem-name">${escHtml(g.name)}</span>
+      <span class="badge badge-${g.color}">${g.color}</span>
+    </div>`
+  ).join('');
+  suggestBox.style.display = 'block';
+  activeIdx = -1;
+  suggestBox.querySelectorAll('.suggestion').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      selectGem(el.dataset.id);
+    });
+  });
+}
+
+input.addEventListener('input', () => {
+  showSuggestions(input.value.trim());
+  resultsEl.style.display = 'none';
+  noResult.style.display  = 'none';
+  selectedGem = null;
+});
+
+input.addEventListener('keydown', e => {
+  const rows = suggestBox.querySelectorAll('.suggestion');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    activeIdx = Math.min(activeIdx + 1, rows.length - 1);
+    rows.forEach((r, i) => r.classList.toggle('active', i === activeIdx));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    activeIdx = Math.max(activeIdx - 1, -1);
+    rows.forEach((r, i) => r.classList.toggle('active', i === activeIdx));
+  } else if (e.key === 'Enter') {
+    if (activeIdx >= 0 && rows[activeIdx]) {
+      selectGem(rows[activeIdx].dataset.id);
+    } else if (rows.length > 0) {
+      selectGem(rows[0].dataset.id);
+    }
+  } else if (e.key === 'Escape') {
+    suggestBox.style.display = 'none';
+  }
+});
+
+input.addEventListener('blur', () => {
+  setTimeout(() => { suggestBox.style.display = 'none'; }, 150);
+});
+
+function selectGem(id) {
+  const gem = data.skillGems.find(g => g.id === id);
+  if (!gem) return;
+  selectedGem = gem;
+  input.value = gem.name;
+  suggestBox.style.display = 'none';
+  renderResults(gem);
+}
+
+function renderResults(gem) {
+  document.getElementById('result-name').textContent = gem.name;
+  document.getElementById('result-tags').textContent =
+    gem.tags.filter(t => !['strength','dexterity','intelligence','vaal'].includes(t)).join(', ');
+
+  const compat = data.compatibility[gem.id] || [];
+  const supportMap = {};
+  data.supportGems.forEach(s => { supportMap[s.id] = s; });
+
+  const byColor = { red: [], green: [], blue: [] };
+  compat.forEach(id => {
+    const s = supportMap[id];
+    if (s && byColor[s.color]) byColor[s.color].push(s);
+  });
+
+  const sectionsEl = document.getElementById('color-sections');
+  sectionsEl.innerHTML = '';
+
+  ['red','green','blue'].forEach(color => {
+    const gems = byColor[color];
+    const section = document.createElement('div');
+    section.className = 'color-section';
+
+    const label = { red:'Red', green:'Green', blue:'Blue' }[color];
+    const poolSize = gems.length;
+
+    section.innerHTML = `
+      <div class="section-header ${color}">
+        <span class="section-title ${color}">${label}</span>
+        <span class="pool-info">${poolSize} support${poolSize !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="prob-display empty" id="prob-${color}">Select supports to see probability</div>
+      <div class="gem-list" id="list-${color}"></div>
+    `;
+
+    const listEl = section.querySelector(`#list-${color}`);
+    if (gems.length === 0) {
+      listEl.innerHTML = '<div class="no-support">No compatible supports</div>';
+    } else {
+      gems.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'gem-row';
+        const prob = poolSize > 0 ? `1 in ${poolSize}` : '';
+        row.innerHTML = `
+          <input type="checkbox" id="cb-${s.id}" data-color="${color}" data-pool="${poolSize}" />
+          <label class="gname" for="cb-${s.id}">${escHtml(s.name)}</label>
+          <span class="gprob">${prob}</span>
+        `;
+        row.querySelector('input').addEventListener('change', () => updateProb(color, poolSize));
+        listEl.appendChild(row);
+      });
+    }
+
+    sectionsEl.appendChild(section);
+  });
+
+  resultsEl.style.display = 'block';
+}
+
+function updateProb(color, poolSize) {
+  const checked = document.querySelectorAll(`input[data-color="${color}"]:checked`);
+  const probEl  = document.getElementById(`prob-${color}`);
+  if (!probEl) return;
+
+  if (checked.length === 0) {
+    probEl.className = 'prob-display empty';
+    probEl.textContent = 'Select supports to see probability';
+    return;
+  }
+
+  const desiredCount = checked.length;
+  const pct = poolSize > 0 ? (desiredCount / poolSize * 100).toFixed(1) : 0;
+  const inN = poolSize > 0 ? (poolSize / desiredCount).toFixed(1) : '∞';
+
+  probEl.className = 'prob-display';
+  probEl.textContent =
+    `${desiredCount} of ${poolSize} desired → ${pct}% chance (1 in ${inN})`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
